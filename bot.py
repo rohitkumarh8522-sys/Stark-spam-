@@ -1,6 +1,14 @@
+import asyncio
+
+# Python 3.14 ke liye sabse pehle event loop set karna zaroori hai
+try:
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+except Exception:
+    pass
+
 import os
 import json
-import asyncio
 from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
@@ -13,7 +21,12 @@ if not api_id_raw or not API_HASH or not BOT_TOKEN:
     print("❌ ERROR: Credentials missing in environment variables!")
     exit(1)
 
-API_ID = int(api_id_raw)
+try:
+    API_ID = int(api_id_raw)
+except ValueError:
+    print("❌ ERROR: API_ID must be a valid number!")
+    exit(1)
+
 ADMIN_ID = int(admin_id_raw) if admin_id_raw else 0
 
 DATA_FILE = "data.json"
