@@ -9,8 +9,32 @@ except RuntimeError:
 
 import os
 import json
+import http.server
+import socketserver
+import threading
 from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+
+# --- Render Web Service Port Binding Fix ---
+PORT = int(os.getenv("PORT", 10000))
+
+class HealthCheckHandler(http.server.SimpleHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"Bot is active and running!")
+
+def run_http_server():
+    try:
+        with socketserver.TCPServer(("", PORT), HealthCheckHandler) as httpd:
+            print(f"HTTP server running on port {PORT}")
+            httpd.serve_forever()
+    except Exception as e:
+        print(f"HTTP server error: {e}")
+
+# Start HTTP server in background thread so Render port scan succeeds
+threading.Thread(target=run_http_server, daemon=True).start()
+# ---------------------------------------------
 
 # Safe environment variable parsing
 api_id_raw = os.getenv("API_ID")
