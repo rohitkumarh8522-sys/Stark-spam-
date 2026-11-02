@@ -4,7 +4,7 @@ import asyncio
 from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-# Safe environment variable parsing to prevent crash
+# Safe environment variable parsing
 api_id_raw = os.getenv("API_ID")
 API_HASH = os.getenv("API_HASH", "")
 BOT_TOKEN = os.getenv("BOT_TOKEN", "")
@@ -24,7 +24,6 @@ ADMIN_ID = int(admin_id_raw) if admin_id_raw else 0
 
 DATA_FILE = "data.json"
 
-# Default settings
 DEFAULT_DATA = {
     "broadcast_message": "Hello friends! This is an automated message.",
     "interval": 60,
@@ -186,5 +185,10 @@ async def run_broadcaster(session_string):
             db["sessions"][session_string]["running"] = False
             save_data(db)
 
+async def main():
+    await app.start()
+    print("🤖 Master Bot started successfully!")
+    await asyncio.Event().wait()
+
 if __name__ == "__main__":
-    app.run()
+    asyncio.run(main())
