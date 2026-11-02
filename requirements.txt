@@ -1,2 +1,2 @@
-python-3.11.9
+pyrogram==2.0.106
 tgcrypto==1.2.5
