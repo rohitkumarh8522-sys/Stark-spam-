@@ -4,11 +4,23 @@ import asyncio
 from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-# Environment variables se credentials lein
-API_ID = int(os.getenv("API_ID", "0"))
+# Safe environment variable parsing to prevent crash
+api_id_raw = os.getenv("API_ID")
 API_HASH = os.getenv("API_HASH", "")
 BOT_TOKEN = os.getenv("BOT_TOKEN", "")
-ADMIN_ID = int(os.getenv("ADMIN_ID", "0")) # Aapki Telegram ID
+admin_id_raw = os.getenv("ADMIN_ID")
+
+if not api_id_raw or not API_HASH or not BOT_TOKEN:
+    print("❌ ERROR: API_ID, API_HASH, ya BOT_TOKEN environment variable me missing hai!")
+    exit(1)
+
+try:
+    API_ID = int(api_id_raw)
+except ValueError:
+    print("❌ ERROR: API_ID ek valid number hona chahiye!")
+    exit(1)
+
+ADMIN_ID = int(admin_id_raw) if admin_id_raw else 0
 
 DATA_FILE = "data.json"
 
@@ -17,25 +29,30 @@ DEFAULT_DATA = {
     "broadcast_message": "Hello friends! This is an automated message.",
     "interval": 60,
     "auto_reply": "Hello! I am currently busy, will reply soon.",
-    "sessions": {}, # {string_session: {"running": False}}
+    "sessions": {},
     "active_tasks": {}
 }
 
 def load_data():
     if os.path.exists(DATA_FILE):
-        with open(DATA_FILE, "r") as f:
-            return json.load(f)
+        try:
+            with open(DATA_FILE, "r") as f:
+                return json.load(f)
+        except Exception:
+            return DEFAULT_DATA
     return DEFAULT_DATA
 
 def save_data(data):
-    with open(DATA_FILE, "w") as f:
-        json.dump(data, f, indent=4)
+    try:
+        with open(DATA_FILE, "w") as f:
+            json.dump(data, f, indent=4)
+    except Exception as e:
+        print(f"Error saving data: {e}")
 
 db = load_data()
 
 app = Client("master_bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
-# Main menu buttons
 def get_main_menu():
     running_count = sum(1 for s in db["sessions"].values() if s.get("running"))
     total_accounts = len(db["sessions"])
@@ -128,7 +145,6 @@ async def add_session_cmd(client, message):
             return
         session_str = args[1].strip()
         
-        # Test session connection
         user_client = Client("temp_sess", api_id=API_ID, api_hash=API_HASH, session_string=session_str)
         async with user_client:
             me = await user_client.get_me()
@@ -143,7 +159,6 @@ async def run_broadcaster(session_string):
     try:
         user_app = Client(f"session_{session_string[:10]}", api_id=API_ID, api_hash=API_HASH, session_string=session_string)
         async with user_app:
-            # Incoming message auto-reply handler for this user account
             @user_app.on_message(filters.private & ~filters.me)
             async def handle_private(c, msg):
                 auto_msg = db.get("auto_reply")
@@ -160,7 +175,7 @@ async def run_broadcaster(session_string):
                             await user_app.send_message(dialog.chat.id, msg_text)
                             db["total_sent"] = db.get("total_sent", 0) + 1
                             save_data(db)
-                            await asyncio.sleep(2) # Floodwait prevent karne ke liye chota gap
+                            await asyncio.sleep(2)
                         except Exception:
                             continue
                             
