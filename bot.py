@@ -1,87 +1,43 @@
-import asyncio
-
-# Python 3.14 compatibility fix for Pyrogram
-try:
-    asyncio.get_event_loop()
-except RuntimeError:
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-
 import os
 import json
-import http.server
-import socketserver
-import threading
+import asyncio
 from pyrogram import Client, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-# --- Render Web Service Port Binding Fix ---
-PORT = int(os.getenv("PORT", 10000))
-
-class HealthCheckHandler(http.server.SimpleHTTPRequestHandler):
-    def do_GET(self):
-        self.send_response(200)
-        self.end_headers()
-        self.wfile.write(b"Bot is active and running!")
-
-def run_http_server():
-    try:
-        with socketserver.TCPServer(("", PORT), HealthCheckHandler) as httpd:
-            print(f"HTTP server running on port {PORT}")
-            httpd.serve_forever()
-    except Exception as e:
-        print(f"HTTP server error: {e}")
-
-# Start HTTP server in background thread so Render port scan succeeds
-threading.Thread(target=run_http_server, daemon=True).start()
-# ---------------------------------------------
-
-# Safe environment variable parsing
 api_id_raw = os.getenv("API_ID")
 API_HASH = os.getenv("API_HASH", "")
 BOT_TOKEN = os.getenv("BOT_TOKEN", "")
 admin_id_raw = os.getenv("ADMIN_ID")
 
 if not api_id_raw or not API_HASH or not BOT_TOKEN:
-    print("❌ ERROR: API_ID, API_HASH, ya BOT_TOKEN environment variable me missing hai!")
+    print("❌ ERROR: Credentials missing in environment variables!")
     exit(1)
 
-try:
-    API_ID = int(api_id_raw)
-except ValueError:
-    print("❌ ERROR: API_ID ek valid number hona chahiye!")
-    exit(1)
-
+API_ID = int(api_id_raw)
 ADMIN_ID = int(admin_id_raw) if admin_id_raw else 0
 
 DATA_FILE = "data.json"
-
-DEFAULT_DATA = {
-    "broadcast_message": "Hello friends! This is an automated message.",
-    "interval": 60,
-    "auto_reply": "Hello! I am currently busy, will reply soon.",
-    "sessions": {},
-    "active_tasks": {}
-}
 
 def load_data():
     if os.path.exists(DATA_FILE):
         try:
             with open(DATA_FILE, "r") as f:
                 return json.load(f)
-        except Exception:
-            return DEFAULT_DATA
-    return DEFAULT_DATA
+        except:
+            pass
+    return {
+        "broadcast_message": "Hello friends! This is an automated message.",
+        "interval": 60,
+        "auto_reply": "Hello! I am currently busy, will reply soon.",
+        "sessions": {},
+        "active_tasks": {}
+    }
 
 def save_data(data):
-    try:
-        with open(DATA_FILE, "w") as f:
-            json.dump(data, f, indent=4)
-    except Exception as e:
-        print(f"Error saving data: {e}")
+    with open(DATA_FILE, "w") as f:
+        json.dump(data, f, indent=4)
 
 db = load_data()
-
 app = Client("master_bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
 def get_main_menu():
@@ -217,10 +173,5 @@ async def run_broadcaster(session_string):
             db["sessions"][session_string]["running"] = False
             save_data(db)
 
-async def main():
-    await app.start()
-    print("🤖 Master Bot started successfully!")
-    await asyncio.Event().wait()
-
 if __name__ == "__main__":
-    asyncio.run(main())
+    app.run()
